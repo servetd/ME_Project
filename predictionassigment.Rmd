@@ -1,0 +1,133 @@
+---
+title: "Prediction Assignment Writeup"
+author: "Servet Demir"
+date: "06 10 2019"
+output: html_document
+---
+# A- General Summary  
+This document is the final report of the Peer Assessment project from Coursera’s course Practical Machine Learning, as part of the Specialization in Data Science. It was built in RStudio, using its knitr functions, meant to be published in html format. This analysis meant to be the basis for the course quiz and a prediction assignment writeup. The main goal of the project is to predict the manner in which 6 participants performed some exercise as described below. This is the “classe” variable in the training set. The machine learning algorithm described here is applied to the 20 test cases available in the test data and the predictions are submitted in appropriate format to the Course Project Prediction Quiz for automated grading.  
+
+## Human Activity Recognition  
+Human Activity Recognition - HAR - has emerged as a key research area in the last years and is gaining increasing attention by the pervasive computing research community (see picture below, that illustrates the increasing number of publications in HAR with wearable accelerometers), especially for the development of context-aware systems. There are many potential applications for HAR, like: elderly monitoring, life log systems for monitoring energy expenditure and for supporting weight-loss programs, and digital assistants for weight lifting exercises.  
+
+## Explanation About Data  
+The training data for this project are available here:  
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv  
+The test data are available here:  
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv  
+The data for this project come from this source: http://groupware.les.inf.puc-rio.br/har.   
+
+# B- Data Loading and Explotary Analysis  
+## B.1. Related Package
+```{r }
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+library(rattle)
+```
+## B.2.Data Loading and Cleaning Data
+
+```{r load data }
+url1 <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+url2 <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+if(!file.exists("pml-training.csv")) {
+   pml-training <-  download.file(url1, "pml-training.csv")
+}
+if(!file.exists("./data/pml-testing.csv")) {
+    pml-testing <- download.file(url2, "./data/pml-testing.csv")
+}
+traindata <- read.csv("./data/pml-training.csv", na.strings=c("NA","#DIV/0!",""))
+testdata <- read.csv("./data/pml-testing.csv", na.strings=c("NA","#DIV/0!",""))
+dim(traindata)
+```
+## B.3. Explanation About Data Variables  
+Datasets have 160 variables. According explanation (http://groupware.les.inf.puc-rio.br/har), there are three tool to measure "gyroscope", "accelerator", "magnet", also they can be  in four position on body["belt", "arm", "dumbbell", "forearm"] and there are three dimensional measurement "x", "y", "z". When I examine the names of variables related to these measurements, I saw for example "magnet_forearm_x" and "accel_dumbbell_z", so I produced list variable for analysis.
+
+```{r listvariable }
+listtool <- c("gyros", "accel", "magnet") # List for tool
+listbodyPos <- c("belt", "arm", "dumbbell", "forearm") # list for body position
+listdim <- c("x", "y", "z") # list for dimention
+listvariable <- NULL
+for (i in listtool) {
+        for (n in listbodyPos) {
+                for ( m in listdim) {
+                        listvariable <- c( listvariable, paste(i,n,m, sep = "_"))
+                }
+        }
+}
+
+listvariable <- c(listvariable, "classe") # Also I add Y variable
+listvariable
+```
+Now 36 predictor. Let's tidy data for analysis and select train and test data. I select variables from listvariable
+
+```{r tidy and selection  data  }
+straining <- traindata[,listvariable] # selection related variables
+straining <- na.omit(straining)
+set.seed(1234)
+inTrain  <- createDataPartition(y=straining$classe, p=0.7, list=FALSE) # Devide data train and test
+training <- straining[inTrain, ]
+testing  <- straining[-inTrain, ]
+dim(training)
+```  
+in training data has `r dim(training)[1] ` observation and test data has `r dim(testing)[1] `  
+
+# C. Prediction Model
+I will check three model first one is Random Forest, second one is  Generalized Boosted Model and third one is Decision Tree
+
+## C.1. Prediction Random Forest  
+
+```{r model 1  }
+controlRF <- trainControl(method="cv", number=3, verboseIter=FALSE)
+model1 <- train(classe~., data=training, method="rf", trControl=controlRF)
+model1$finalModel
+```  
+Calculate accuracy on testing data for RF
+
+```{r model 1 prediction }
+predmodel1 <- predict(model1, testing)
+model1ConMatrix <- confusionMatrix(predmodel1, testing$classe)
+plot(model1ConMatrix$table, col = model1ConMatrix$byClass, main = paste("Random Forest( Accuracy) =", round(model1ConMatrix$overall['Accuracy'], 3)))
+```
+For Random forest Model accuracy is `r round(model1ConMatrix$overall['Accuracy'], 3) ` so it is realy high
+
+## C.2. Prediction Generalized Boosted Model
+```{r model 2  }
+ControlGBM <- trainControl(method="repeatedcv", number=5, repeats=1)
+model2 <- train(classe~., data=training, method="gbm", trControl=ControlGBM, verbose=FALSE)
+model2$finalModel
+```
+Calculate accuracy on testing data for GBM  
+```{r model 2 Prediction }
+predmodel2 <- predict(model2, testing)
+model2ConMatrix <- confusionMatrix(predmodel2, testing$classe)
+plot(model2ConMatrix$table, col = model2ConMatrix$byClass, main = paste("GBM( Accuracy) =", round(model2ConMatrix$overall['Accuracy'], 3)))
+```
+For Generalized Boosted Model accuracy is `r round(model2ConMatrix$overall['Accuracy'], 3) `  
+
+## C.3. Prediction Decision Tree
+```{r model 3  }
+model3 <- rpart(classe ~ ., data=training, method="class")
+fancyRpartPlot(model3)
+```
+
+```{r model 3 Prediction}
+predmodel3 <- predict(model3, testing, type = "class")
+model3ConMatrix <- confusionMatrix(predmodel3, testing$classe)
+plot(model3ConMatrix$table, col = model3ConMatrix$byClass, main = paste("Decision Tree( Accuracy) =", round(model3ConMatrix$overall['Accuracy'], 3)))
+```
+
+For Decision Tree Model accuracy is `r round(model3ConMatrix$overall['Accuracy'], 3) `  
+
+# E. Selectin Model
+According to accuracy model1 (Random Forest) is selected.
+Now Let's apply prediction to test data
+```{r Prediction  for test data }
+predtest <- predict(model1, testdata)
+predtest
+````  
+## Final Comment
+
+We can predict human activity with 36 variables which contain the measurement of "gyroscope", "accelerator", "magnet".
+
