@@ -14,3 +14,4 @@ https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
 The data for this project come from this source: http://groupware.les.inf.puc-rio.br/har.
 
 You may check predictionassigment.Rmd or predictionassigment.html files
+You may als check result from http://rpubs.com/servetd/536242
