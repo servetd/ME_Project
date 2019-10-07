@@ -15,3 +15,5 @@ The data for this project come from this source: http://groupware.les.inf.puc-ri
 
 You may check predictionassigment.Rmd or https://github.com/servetd/ME_Project/blob/master/predictionassigment.html files
 You may als check result from http://rpubs.com/servetd/536242
+
+For Github Page https://servetd.github.io/ME_Project/predictionassigment.html
